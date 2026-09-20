@@ -4,8 +4,8 @@ let html5QrCode = null;
 let isScanning = false;
 let isTorchOn = false;
 let videoTrack = null;
+let isProcessing = false;
 
-// Tab Switch
 function switchView(mode) {
   closeModal();
   if (mode === 'camera') {
@@ -22,7 +22,6 @@ function switchView(mode) {
   }
 }
 
-// Modal popup open
 function openModal(htmlContent, headerClass, headerTitle) {
   const modal = document.getElementById("verifyModal");
   const modalHeader = document.getElementById("modalHeader");
@@ -35,99 +34,88 @@ function openModal(htmlContent, headerClass, headerTitle) {
   modal.style.display = "flex";
 }
 
-// Modal popup close
 function closeModal() {
   document.getElementById("verifyModal").style.display = "none";
-  // Agar scanner chal raha ho toh resume karo
+  isProcessing = false;
   if (html5QrCode && isScanning) {
     try { html5QrCode.resume(); } catch(e) {}
   }
 }
 
-// Database Verify Function (Sheet2 Realtime)
+// 100% Working GET Request Verification
 function verifyId(uniqueId) {
+  if (isProcessing) return;
+  isProcessing = true;
+
   openModal(
-    `<p style="text-align:center; padding:20px; font-weight:bold; color:#2b6cb0;">🔍 Checking ID: ${uniqueId}...<br><small>ডাটাবেস চেক করা হচ্ছে...</small></p>`,
+    `<p style="text-align:center; padding:20px; font-weight:bold; color:#2b6cb0;">🔍 Checking ID: ${uniqueId}...<br><small>যাচাই করা হচ্ছে...</small></p>`,
     "allow",
     "CHECKING..."
   );
 
-  fetch(WEB_APP_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ uniqueId: uniqueId })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      const isExceeded = data.isExceeded;
-      const headerClass = isExceeded ? "danger" : "allow";
-      const headerTitle = isExceeded ? "⚠️ CAPACITY EXCEEDED! (লোক বেশি)" : "✅ ENTRY ALLOWED (প্রবেশ অনুমোদিত)";
+  const requestUrl = WEB_APP_URL + "?uniqueId=" + encodeURIComponent(uniqueId);
 
-      let alertMessage = "";
-      if (isExceeded) {
-        alertMessage = `
-          <div class="alert-box alert-danger">
-            ⛔ ALERT: Is Card Par Limit Se ${data.overLimitBy} Extra Log Aaye Hain!<br>
-            লোক সংখ্যা পার হয়ে গেছে! প্রবেশ আটকান।
-          </div>`;
+  fetch(requestUrl)
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const isExceeded = data.isExceeded;
+        const headerClass = isExceeded ? "danger" : "allow";
+        const headerTitle = isExceeded ? "⚠️ CAPACITY EXCEEDED! (লোক বেশি)" : "✅ ENTRY ALLOWED (প্রবেশ অনুমোদিত)";
+
+        let alertMessage = isExceeded 
+          ? `<div class="alert-box alert-danger">⛔ ALERT: Is Pass Par Limit Se ${data.overLimitBy} Extra Log Aaye Hain!<br>লোক সংখ্যা পার হয়ে গেছে! প্রবেশ আটকান।</div>`
+          : `<div class="alert-box alert-success">✅ PASS VERIFIED: Entry Valid (${data.remaining} entry baki hai)</div>`;
+
+        const bodyHtml = `
+          <div style="font-size:18px; font-weight:bold; color:#1a202c; margin-bottom:4px;">${data.guestName}</div>
+          <div style="color:#718096; font-size:13px; margin-bottom:10px;">Group: ${data.groupName} | Category: <b>${data.category}</b></div>
+          
+          <div class="row"><span>Pass ID:</span> <span class="badge">${data.uniqueId}</span></div>
+          <div class="row"><span>Allowed Capacity:</span> <b>${data.capacity} Persons</b></div>
+          <div class="row" style="border-top:1px solid #edf2f7; padding-top:6px;">
+            <span>Live Scan Count (মোট প্রবেশ):</span> 
+            <span class="counter-tag" style="color:${isExceeded ? '#c53030' : '#276749'};">${data.scanCount} / ${data.capacity}</span>
+          </div>
+          <div class="row"><span>Entry Time:</span> <small>${data.lastScan}</small></div>
+
+          ${alertMessage}
+
+          <button class="btn-next" onclick="closeModal()">Next Scan / পরবর্তী স্ক্যান (✖)</button>
+        `;
+
+        openModal(bodyHtml, headerClass, headerTitle);
       } else {
-        alertMessage = `
-          <div class="alert-box alert-success">
-            ✅ PASS VERIFIED: Entry Valid (${data.remaining} entry baki hai)
-          </div>`;
+        openModal(`
+          <div style="text-align:center; padding:10px;">
+            <p style="color:#c53030; font-size:16px; font-weight:bold;">${data.message}</p>
+            <button class="btn-next" style="background:#e53e3e;" onclick="closeModal()">Close (✖)</button>
+          </div>
+        `, "error", "❌ NOT FOUND / পাওয়া যায়নি");
       }
-
-      const bodyHtml = `
-        <div style="font-size:19px; font-weight:bold; color:#1a202c; margin-bottom:5px;">${data.guestName}</div>
-        <div style="color:#718096; font-size:13px; margin-bottom:12px;">Group: ${data.groupName} | Side: <b>${data.category}</b></div>
-        
-        <div class="row"><span>Pass Unique ID:</span> <span class="badge">${data.uniqueId}</span></div>
-        <div class="row"><span>Total Allowed Capacity:</span> <b>${data.capacity} Persons</b></div>
-        <div class="row" style="border-top:1px solid #edf2f7; padding-top:6px;">
-          <span>Live Scan Count (মোট প্রবেশ):</span> 
-          <span class="counter-tag" style="color:${isExceeded ? '#c53030' : '#276749'};">${data.scanCount} / ${data.capacity}</span>
-        </div>
-        <div class="row"><span>Scan Time:</span> <small>${data.lastScan}</small></div>
-
-        ${alertMessage}
-
-        <button class="btn-next" onclick="closeModal()">Next Scan / পরবর্তী স্ক্যান (✖)</button>
-      `;
-
-      openModal(bodyHtml, headerClass, headerTitle);
-
-    } else {
+    })
+    .catch(err => {
+      console.error(err);
       openModal(`
         <div style="text-align:center; padding:10px;">
-          <p style="color:#c53030; font-size:16px; font-weight:bold;">${data.message || "Invalid QR Code / ID Sahi Nahi Hai!"}</p>
-          <button class="btn-next" style="background:#e53e3e;" onclick="closeModal()">Dobara Check Karein</button>
+          <p style="color:#c53030; font-size:15px; font-weight:bold;">Network/Server Error!<br><small>Script deployment ya Internet check karein.</small></p>
+          <button class="btn-next" style="background:#4a5568;" onclick="closeModal()">Close (✖)</button>
         </div>
-      `, "error", "❌ NOT FOUND / পাওয়া যায়নি");
-    }
-  })
-  .catch(err => {
-    console.error(err);
-    openModal(`
-      <p style="color:#c53030; text-align:center;">Database connection failed. Internet check karein.</p>
-      <button class="btn-next" onclick="closeModal()">Close</button>
-    `, "error", "CONNECTION ERROR");
-  });
+      `, "error", "ERROR");
+    });
 }
 
-// Manual Form Submit
 function submitManual() {
   const input = document.getElementById("manualId");
   const val = input.value.trim();
   if (!val) {
-    alert("Kripya ID enter karein / আইডি লিখুন!");
+    alert("Kripya ID enter karein!");
     return;
   }
   verifyId(val);
   input.value = "";
 }
 
-// Scanner start
 function startScanner() {
   if (isScanning) return;
   html5QrCode = new Html5Qrcode("reader");
@@ -136,9 +124,10 @@ function startScanner() {
     { facingMode: "environment" },
     { fps: 10, qrbox: { width: 250, height: 250 } },
     (decodedText) => {
-      // Camera pause karke modal kholo
-      html5QrCode.pause(true);
-      verifyId(decodedText);
+      if (!isProcessing) {
+        try { html5QrCode.pause(true); } catch(e) {}
+        verifyId(decodedText);
+      }
     },
     () => {}
   ).then(() => {
@@ -152,7 +141,6 @@ function startScanner() {
   });
 }
 
-// Scanner stop
 function stopScanner() {
   if (html5QrCode && isScanning) {
     html5QrCode.stop().then(() => {
@@ -165,7 +153,6 @@ function stopScanner() {
   }
 }
 
-// Torch
 function checkTorch() {
   try {
     const video = document.querySelector("#reader video");
