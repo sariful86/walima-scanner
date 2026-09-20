@@ -6,11 +6,9 @@ let isTorchOn = false;
 let videoTrack = null;
 let isProcessing = false;
 
-// Global response handler
-window.handleScannerResponse = function(data) {
+// Guest Verification Result Popup
+function renderGuestData(data) {
   isProcessing = false;
-  const oldScript = document.getElementById("jsonp_script");
-  if (oldScript) oldScript.remove();
 
   if (data.success) {
     const isExceeded = data.isExceeded;
@@ -18,7 +16,7 @@ window.handleScannerResponse = function(data) {
     const headerTitle = isExceeded ? "⚠️ CAPACITY EXCEEDED! (লোক বেশি)" : "✅ ENTRY ALLOWED (প্রবেশ অনুমোদিত)";
 
     let alertMessage = isExceeded 
-      ? `<div class="alert-box alert-danger">⛔ ALERT: Is Pass Par Limit Se ${data.overLimitBy} Extra Log Aaye Hain!<br>লোক সংখ্যা পার হয়ে গেছে! প্রবেশ আটকান।</div>`
+      ? `<div class="alert-box alert-danger">⛔ ALERT: Limit Se ${data.overLimitBy} Extra Log Aaye Hain!<br>লোক সংখ্যা পার হয়ে গেছে! প্রবেশ আটকান।</div>`
       : `<div class="alert-box alert-success">✅ PASS VERIFIED: Entry Valid (${data.remaining} entry baki hai)</div>`;
 
     const bodyHtml = `
@@ -47,6 +45,10 @@ window.handleScannerResponse = function(data) {
       </div>
     `, "error", "❌ NOT FOUND / পাওয়া যায়নি");
   }
+}
+
+window.handleScannerResponse = function(data) {
+  renderGuestData(data);
 };
 
 function switchView(mode) {
@@ -85,7 +87,7 @@ function closeModal() {
   }
 }
 
-// Zero-failure JSONP verification
+// Database Se Check Karne Ka Function
 function verifyId(uniqueId) {
   const cleanId = (uniqueId || "").trim();
   if (!cleanId) return;
@@ -99,24 +101,32 @@ function verifyId(uniqueId) {
     "CHECKING..."
   );
 
-  const oldScript = document.getElementById("jsonp_script");
-  if (oldScript) oldScript.remove();
+  const targetUrl = `${WEB_APP_URL}?uniqueId=${encodeURIComponent(cleanId)}`;
 
-  const script = document.createElement("script");
-  script.id = "jsonp_script";
-  script.src = `${WEB_APP_URL}?uniqueId=${encodeURIComponent(cleanId)}&callback=handleScannerResponse`;
-  
-  script.onerror = function() {
-    isProcessing = false;
-    openModal(`
-      <div style="text-align:center; padding:10px;">
-        <p style="color:#c53030; font-size:15px; font-weight:bold;">Server connection error.<br><small>Internet ya script deployment check karein.</small></p>
-        <button class="btn-next" style="background:#4a5568;" onclick="closeModal()">Close (✖)</button>
-      </div>
-    `, "error", "ERROR");
-  };
+  // Direct Fetch try karega, agar block hua toh JSONP inject karega
+  fetch(targetUrl)
+    .then(res => res.json())
+    .then(data => renderGuestData(data))
+    .catch(() => {
+      const oldScript = document.getElementById("jsonp_script");
+      if (oldScript) oldScript.remove();
 
-  document.body.appendChild(script);
+      const script = document.createElement("script");
+      script.id = "jsonp_script";
+      script.src = `${targetUrl}&callback=handleScannerResponse`;
+
+      script.onerror = function() {
+        isProcessing = false;
+        openModal(`
+          <div style="text-align:center; padding:10px;">
+            <p style="color:#c53030; font-size:15px; font-weight:bold;">Server connection error.<br><small>Script deployment ya Internet check karein.</small></p>
+            <button class="btn-next" style="background:#4a5568;" onclick="closeModal()">Close (✖)</button>
+          </div>
+        `, "error", "ERROR");
+      };
+
+      document.body.appendChild(script);
+    });
 }
 
 function submitManual() {
