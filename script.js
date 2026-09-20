@@ -5,7 +5,6 @@ let isScanning = false;
 let isTorchOn = false;
 let videoTrack = null;
 let isProcessing = false;
-let autoCloseTimer = null;
 
 function toggleMenu(open) {
   document.getElementById("sideDrawer").style.width = open ? "280px" : "0";
@@ -27,14 +26,14 @@ function updateDashboard(data) {
     data.groups.forEach(g => {
       html += `<div style="display:flex; justify-content:space-between; margin-bottom:6px; border-bottom:1px dashed #334155; padding-bottom:4px;">
         <span><b>${g.name}</b></span>
-        <span><b style="color:#4ade80;">${g.arrived}</b> / ${g.total}</span>
+        <span><b style="color:#16a34a;">${g.arrived}</b> / ${g.total}</span>
       </div>`;
     });
     document.getElementById("groupBreakdown").innerHTML = html;
   }
 }
 
-// Render guest data with bright highlighted text
+// Render guest data (Auto-close removed, manual close only)
 function renderGuestData(data) {
   isProcessing = false;
 
@@ -46,7 +45,7 @@ function renderGuestData(data) {
     updateDashboard(data.dashboard);
     const isExceeded = data.isExceeded;
     const headerClass = isExceeded ? "danger" : "allow";
-    const headerTitle = isExceeded ? "⚠️ CAPACITY EXCEEDED!" : "✅ ENTRY ALLOWED (प्रবেশ অনুমোদিত)";
+    const headerTitle = isExceeded ? "⚠️ CAPACITY EXCEEDED!" : "✅ ENTRY ALLOWED (প্রবেশ অনুমোদিত)";
 
     let alertMessage = isExceeded 
       ? `<div class="alert-box alert-danger">⛔ ALERT: ${data.overLimitBy} Extra Persons Beyond Limit!</div>`
@@ -65,16 +64,10 @@ function renderGuestData(data) {
       <div class="row"><span>Entry Time:</span> <small>${data.lastScan}</small></div>
 
       ${alertMessage}
-      <div class="auto-close-info">⚡ Auto-closing in 1.5 seconds...</div>
+      <button class="btn" style="background:#0f172a; color:white; margin-top:12px;" onclick="closeModal()">Next Scan / Close (✕)</button>
     `;
 
     openModal(bodyHtml, headerClass, headerTitle);
-
-    if (!isExceeded) {
-      autoCloseTimer = setTimeout(() => {
-        closeModal();
-      }, 1500);
-    }
 
   } else {
     openModal(`
@@ -121,7 +114,6 @@ function openModal(htmlContent, headerClass, headerTitle) {
 function closeModal() {
   document.getElementById("verifyModal").style.display = "none";
   isProcessing = false;
-  if (autoCloseTimer) clearTimeout(autoCloseTimer);
   if (html5QrCode && isScanning) {
     try { html5QrCode.resume(); } catch(e) {}
   }
@@ -229,3 +221,10 @@ function toggleTorch() {
       });
   }
 }
+
+// Page load hote hi initial dashboard stats load karega
+window.onload = function() {
+  const script = document.createElement("script");
+  script.src = `${WEB_APP_URL}?callback=handleScannerResponse`;
+  document.body.appendChild(script);
+};
