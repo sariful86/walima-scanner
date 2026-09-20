@@ -10,7 +10,6 @@ function toggleMenu(open) {
   document.getElementById("sideDrawer").style.width = open ? "280px" : "0";
 }
 
-// Update dashboard stats & group list
 function updateDashboard(data) {
   if (!data) return;
   document.getElementById("statTotalEntered").innerText = data.totalArrived || 0;
@@ -33,7 +32,6 @@ function updateDashboard(data) {
   }
 }
 
-// Render guest data (Auto-close removed, manual close only)
 function renderGuestData(data) {
   isProcessing = false;
 
@@ -64,7 +62,7 @@ function renderGuestData(data) {
       <div class="row"><span>Entry Time:</span> <small>${data.lastScan}</small></div>
 
       ${alertMessage}
-      <button class="btn" style="background:#0f172a; color:white; margin-top:12px;" onclick="closeModal()">Next Scan / Close (✕)</button>
+      <button class="btn" style="background:#0f172a; color:white; margin-top:12px;" onclick="closeModal()">Close / Next Scan (✕)</button>
     `;
 
     openModal(bodyHtml, headerClass, headerTitle);
@@ -222,7 +220,6 @@ function toggleTorch() {
   }
 }
 
-// Page load hote hi initial dashboard stats load karega
 window.onload = function() {
   const script = document.createElement("script");
   script.src = `${WEB_APP_URL}?callback=handleScannerResponse`;
