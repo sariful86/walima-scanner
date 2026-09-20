@@ -6,6 +6,49 @@ let isTorchOn = false;
 let videoTrack = null;
 let isProcessing = false;
 
+// Global response handler
+window.handleScannerResponse = function(data) {
+  isProcessing = false;
+  const oldScript = document.getElementById("jsonp_script");
+  if (oldScript) oldScript.remove();
+
+  if (data.success) {
+    const isExceeded = data.isExceeded;
+    const headerClass = isExceeded ? "danger" : "allow";
+    const headerTitle = isExceeded ? "⚠️ CAPACITY EXCEEDED! (লোক বেশি)" : "✅ ENTRY ALLOWED (প্রবেশ অনুমোদিত)";
+
+    let alertMessage = isExceeded 
+      ? `<div class="alert-box alert-danger">⛔ ALERT: Is Pass Par Limit Se ${data.overLimitBy} Extra Log Aaye Hain!<br>লোক সংখ্যা পার হয়ে গেছে! প্রবেশ আটকান।</div>`
+      : `<div class="alert-box alert-success">✅ PASS VERIFIED: Entry Valid (${data.remaining} entry baki hai)</div>`;
+
+    const bodyHtml = `
+      <div style="font-size:18px; font-weight:bold; color:#1a202c; margin-bottom:4px;">${data.guestName}</div>
+      <div style="color:#718096; font-size:13px; margin-bottom:10px;">Group: ${data.groupName} | Category: <b>${data.category}</b></div>
+      
+      <div class="row"><span>Pass ID:</span> <span class="badge">${data.uniqueId}</span></div>
+      <div class="row"><span>Allowed Capacity:</span> <b>${data.capacity} Persons</b></div>
+      <div class="row" style="border-top:1px solid #edf2f7; padding-top:6px;">
+        <span>Live Scan Count (মোট প্রবেশ):</span> 
+        <span class="counter-tag" style="color:${isExceeded ? '#c53030' : '#276749'};">${data.scanCount} / ${data.capacity}</span>
+      </div>
+      <div class="row"><span>Entry Time:</span> <small>${data.lastScan}</small></div>
+
+      ${alertMessage}
+
+      <button class="btn-next" onclick="closeModal()">Next Scan / পরবর্তী স্ক্যান (✖)</button>
+    `;
+
+    openModal(bodyHtml, headerClass, headerTitle);
+  } else {
+    openModal(`
+      <div style="text-align:center; padding:10px;">
+        <p style="color:#c53030; font-size:16px; font-weight:bold;">${data.message}</p>
+        <button class="btn-next" style="background:#e53e3e;" onclick="closeModal()">Close (✖)</button>
+      </div>
+    `, "error", "❌ NOT FOUND / পাওয়া যায়নি");
+  }
+};
+
 function switchView(mode) {
   closeModal();
   if (mode === 'camera') {
@@ -42,74 +85,45 @@ function closeModal() {
   }
 }
 
-// 100% Working GET Request Verification
+// Zero-failure JSONP verification
 function verifyId(uniqueId) {
+  const cleanId = (uniqueId || "").trim();
+  if (!cleanId) return;
+
   if (isProcessing) return;
   isProcessing = true;
 
   openModal(
-    `<p style="text-align:center; padding:20px; font-weight:bold; color:#2b6cb0;">🔍 Checking ID: ${uniqueId}...<br><small>যাচাই করা হচ্ছে...</small></p>`,
+    `<p style="text-align:center; padding:20px; font-weight:bold; color:#2b6cb0;">🔍 Checking ID: ${cleanId}...<br><small>যাচাই করা হচ্ছে...</small></p>`,
     "allow",
     "CHECKING..."
   );
 
-  const requestUrl = WEB_APP_URL + "?uniqueId=" + encodeURIComponent(uniqueId);
+  const oldScript = document.getElementById("jsonp_script");
+  if (oldScript) oldScript.remove();
 
-  fetch(requestUrl)
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        const isExceeded = data.isExceeded;
-        const headerClass = isExceeded ? "danger" : "allow";
-        const headerTitle = isExceeded ? "⚠️ CAPACITY EXCEEDED! (লোক বেশি)" : "✅ ENTRY ALLOWED (প্রবেশ অনুমোদিত)";
+  const script = document.createElement("script");
+  script.id = "jsonp_script";
+  script.src = `${WEB_APP_URL}?uniqueId=${encodeURIComponent(cleanId)}&callback=handleScannerResponse`;
+  
+  script.onerror = function() {
+    isProcessing = false;
+    openModal(`
+      <div style="text-align:center; padding:10px;">
+        <p style="color:#c53030; font-size:15px; font-weight:bold;">Server connection error.<br><small>Internet ya script deployment check karein.</small></p>
+        <button class="btn-next" style="background:#4a5568;" onclick="closeModal()">Close (✖)</button>
+      </div>
+    `, "error", "ERROR");
+  };
 
-        let alertMessage = isExceeded 
-          ? `<div class="alert-box alert-danger">⛔ ALERT: Is Pass Par Limit Se ${data.overLimitBy} Extra Log Aaye Hain!<br>লোক সংখ্যা পার হয়ে গেছে! প্রবেশ আটকান।</div>`
-          : `<div class="alert-box alert-success">✅ PASS VERIFIED: Entry Valid (${data.remaining} entry baki hai)</div>`;
-
-        const bodyHtml = `
-          <div style="font-size:18px; font-weight:bold; color:#1a202c; margin-bottom:4px;">${data.guestName}</div>
-          <div style="color:#718096; font-size:13px; margin-bottom:10px;">Group: ${data.groupName} | Category: <b>${data.category}</b></div>
-          
-          <div class="row"><span>Pass ID:</span> <span class="badge">${data.uniqueId}</span></div>
-          <div class="row"><span>Allowed Capacity:</span> <b>${data.capacity} Persons</b></div>
-          <div class="row" style="border-top:1px solid #edf2f7; padding-top:6px;">
-            <span>Live Scan Count (মোট প্রবেশ):</span> 
-            <span class="counter-tag" style="color:${isExceeded ? '#c53030' : '#276749'};">${data.scanCount} / ${data.capacity}</span>
-          </div>
-          <div class="row"><span>Entry Time:</span> <small>${data.lastScan}</small></div>
-
-          ${alertMessage}
-
-          <button class="btn-next" onclick="closeModal()">Next Scan / পরবর্তী স্ক্যান (✖)</button>
-        `;
-
-        openModal(bodyHtml, headerClass, headerTitle);
-      } else {
-        openModal(`
-          <div style="text-align:center; padding:10px;">
-            <p style="color:#c53030; font-size:16px; font-weight:bold;">${data.message}</p>
-            <button class="btn-next" style="background:#e53e3e;" onclick="closeModal()">Close (✖)</button>
-          </div>
-        `, "error", "❌ NOT FOUND / পাওয়া যায়নি");
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      openModal(`
-        <div style="text-align:center; padding:10px;">
-          <p style="color:#c53030; font-size:15px; font-weight:bold;">Network/Server Error!<br><small>Script deployment ya Internet check karein.</small></p>
-          <button class="btn-next" style="background:#4a5568;" onclick="closeModal()">Close (✖)</button>
-        </div>
-      `, "error", "ERROR");
-    });
+  document.body.appendChild(script);
 }
 
 function submitManual() {
   const input = document.getElementById("manualId");
   const val = input.value.trim();
   if (!val) {
-    alert("Kripya ID enter karein!");
+    alert("Kripya ID enter karein / একটি আইডি লিখুন!");
     return;
   }
   verifyId(val);
@@ -137,7 +151,7 @@ function startScanner() {
     checkTorch();
   }).catch(err => {
     console.error(err);
-    alert("Camera chalu nahi hua. Browser me camera allow karein.");
+    alert("Camera permission allow karein.");
   });
 }
 
