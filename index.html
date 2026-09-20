@@ -3,67 +3,67 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Walima Guest Entry Scanner</title>
+  <title>Walima Gate Entry Pass Scanner</title>
+  <!-- QR Scanner Library -->
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #f0f2f5; margin: 0; padding: 15px; }
-    .container { max-width: 480px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    h2 { margin-top: 5px; color: #1a73e8; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 15px; text-align: center; }
+    .container { max-width: 480px; margin: auto; background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
+    h2 { margin: 5px 0; color: #1a365d; }
+    .subtitle { font-size: 13px; color: #718096; margin-bottom: 15px; }
+    .tab-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+    .tab-btn { flex: 1; padding: 10px 5px; border: 2px solid #2b6cb0; background: white; color: #2b6cb0; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
+    .tab-btn.active { background: #2b6cb0; color: white; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 10px; min-height: 250px; background: #1a202c; }
+    input[type="text"] { width: 85%; padding: 12px; border: 1.5px solid #cbd5e0; border-radius: 6px; font-size: 16px; text-transform: uppercase; margin-bottom: 10px; }
+    .btn { padding: 11px 18px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; margin: 4px; }
+    .btn-blue { background: #2b6cb0; color: white; width: 90%; }
+    .btn-green { background: #2f855a; color: white; }
+    .btn-red { background: #c53030; color: white; }
+    .btn-orange { background: #dd6b20; color: white; }
     
-    /* Toggle Tabs */
-    .tab-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
-    .tab-btn { padding: 10px 18px; border: 2px solid #1a73e8; background: white; color: #1a73e8; font-weight: bold; border-radius: 25px; cursor: pointer; font-size: 15px; transition: 0.2s; }
-    .tab-btn.active { background: #1a73e8; color: white; }
-
-    /* Sections */
-    .section-card { display: none; margin-top: 10px; padding: 15px; border-radius: 10px; background: #f9fbfd; border: 1px solid #e1e4e8; }
-    .section-card.visible { display: block; }
-
-    /* Scanner Elements */
-    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 10px; }
-    .action-btn { padding: 10px 18px; font-size: 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin: 5px; }
-    .btn-start { background: #28a745; color: white; }
-    .btn-stop { background: #dc3545; color: white; display: none; }
-    .btn-torch { background: #ff9800; color: white; display: none; }
-
-    /* Manual Elements */
-    input[type="text"] { padding: 12px; width: 80%; border: 1.5px solid #bbb; border-radius: 6px; font-size: 16px; text-transform: uppercase; margin-bottom: 12px; }
-    .btn-verify { background: #1a73e8; color: white; width: 85%; }
-
-    #result { margin-top: 20px; font-size: 17px; font-weight: bold; padding: 10px; border-radius: 6px; }
+    /* Guest Detail Card */
+    .card-box { margin-top: 15px; padding: 15px; border-radius: 8px; text-align: left; display: none; }
+    .card-box.success { background: #f0fff4; border: 2px solid #38a169; }
+    .card-box.error { background: #fff5f5; border: 2px solid #e53e3e; }
+    .card-title { font-size: 18px; font-weight: bold; color: #2d3748; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 15px; }
+    .badge { background: #2b6cb0; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-family: monospace; }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <h2>Walima Gate Entry</h2>
+<div class="container">
+  <h2>Walima Entry Gate</h2>
+  <div class="subtitle">Gate Entry & Verification Portal / প্রবেশ যাচাইকরণ</div>
 
-    <!-- User Mode Selection Tabs -->
-    <div class="tab-container">
-      <button id="btnTabManual" class="tab-btn active" onclick="switchMode('manual')">⌨️ Manual Entry</button>
-      <button id="btnTabScanner" class="tab-btn" onclick="switchMode('scanner')">📸 Scan QR Code</button>
-    </div>
-
-    <!-- Manual Entry Section (Default Active) -->
-    <div id="manualSection" class="section-card visible">
-      <h3>Enter Guest ID</h3>
-      <input type="text" id="manualIdInput" placeholder="e.g. FM-847101" autocomplete="off">
-      <br>
-      <button class="action-btn btn-verify" onclick="handleManualSubmit()">Verify & Allow Entry</button>
-    </div>
-
-    <!-- QR Code Scanner Section -->
-    <div id="scannerSection" class="section-card">
-      <button id="startScanBtn" class="action-btn btn-start" onclick="startScanner()">Start Camera</button>
-      <button id="stopScanBtn" class="action-btn btn-stop" onclick="stopScanner()">Stop Camera</button>
-      <button id="torchBtn" class="action-btn btn-torch" onclick="toggleTorch()">Flashlight: OFF</button>
-      
-      <div id="reader"></div>
-    </div>
-
-    <div id="result"></div>
+  <!-- Mode Selection Tabs -->
+  <div class="tab-bar">
+    <button id="tabManual" class="tab-btn active" onclick="switchView('manual')">⌨️ Manual Entry<br><small>হাতে টাইপ করুন</small></button>
+    <button id="tabCamera" class="tab-btn" onclick="switchView('camera')">📸 Camera Scanner<br><small>ক্যামেরা স্ক্যান</small></button>
   </div>
 
-  <script src="script.js"></script>
+  <!-- Manual Entry Panel -->
+  <div id="panelManual" class="panel active">
+    <input type="text" id="manualId" placeholder="Unique ID likhein (e.g. FM-847101)">
+    <br>
+    <button class="btn btn-blue" onclick="submitManual()">Verify & Allow / যাচাই করুন</button>
+  </div>
+
+  <!-- Camera Panel -->
+  <div id="panelCamera" class="panel">
+    <button id="startCamBtn" class="btn btn-green" onclick="startScanner()">📸 Open Camera / ক্যামেরা চালু করুন</button>
+    <button id="stopCamBtn" class="btn btn-red" onclick="stopScanner()" style="display:none;">❌ Stop Camera / বন্ধ করুন</button>
+    <button id="torchBtn" class="btn btn-orange" onclick="toggleTorch()" style="display:none;">Flashlight: OFF</button>
+    <div id="reader"></div>
+  </div>
+
+  <!-- Guest Details Result Box -->
+  <div id="resultBox" class="card-box"></div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>

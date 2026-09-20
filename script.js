@@ -1,121 +1,129 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyS1hY6dxksGIbIkJykHxVP9Gpa9hZMapd2fvv8fPn80RIVvSz5GiyEgu6XW0i4YS8X2Q/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbztugL1bl5OE1S7CbeVOwpwFvdVP3x12uPCry2YZ2SEpqb3kz06ENI1LUl0OaBmlES01w/exec";
 
 let html5QrCode = null;
-let isTorchOn = false;
-let currentTrack = null;
 let isScanning = false;
+let isTorchOn = false;
+let videoTrack = null;
 
-// Mode Switch (Manual vs Scanner)
-function switchMode(mode) {
-  const manualSec = document.getElementById("manualSection");
-  const scannerSec = document.getElementById("scannerSection");
-  const tabManual = document.getElementById("btnTabManual");
-  const tabScanner = document.getElementById("btnTabScanner");
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerText = "";
-
+// Tab Switch Karne Ka Function
+function switchView(mode) {
+  document.getElementById("resultBox").style.display = "none";
   if (mode === 'manual') {
-    manualSec.classList.add("visible");
-    scannerSec.classList.remove("visible");
-    tabManual.classList.add("active");
-    tabScanner.classList.remove("active");
-    if (isScanning) stopScanner(); // Manual par aane par camera band
+    document.getElementById("panelManual").classList.add("active");
+    document.getElementById("panelCamera").classList.remove("active");
+    document.getElementById("tabManual").classList.add("active");
+    document.getElementById("tabCamera").classList.remove("active");
+    if (isScanning) stopScanner();
   } else {
-    scannerSec.classList.add("visible");
-    manualSec.classList.remove("visible");
-    tabScanner.classList.add("active");
-    tabManual.classList.remove("active");
+    document.getElementById("panelCamera").classList.add("active");
+    document.getElementById("panelManual").classList.remove("active");
+    document.getElementById("tabCamera").classList.add("active");
+    document.getElementById("tabManual").classList.remove("active");
   }
 }
 
-// Verification Logic
-function verifyAndLogId(uniqueId) {
-  const resultDiv = document.getElementById("result");
-  resultDiv.style.backgroundColor = "#e8f0fe";
-  resultDiv.style.color = "#1a73e8";
-  resultDiv.innerText = "⏳ Checking ID: " + uniqueId + "...";
+// Database Se ID Check Aur Details Show Karne Ka Function
+function verifyId(uniqueId) {
+  const box = document.getElementById("resultBox");
+  box.className = "card-box success";
+  box.style.display = "block";
+  box.innerHTML = `<p style="text-align:center; color:#2b6cb0; font-weight:bold;">🔍 Checking ID: ${uniqueId} ...<br><small>যাচাই করা হচ্ছে...</small></p>`;
 
   fetch(WEB_APP_URL, {
     method: "POST",
-    mode: "no-cors",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({ uniqueId: uniqueId })
   })
-  .then(() => {
-    resultDiv.style.backgroundColor = "#e6f4ea";
-    resultDiv.style.color = "#137333";
-    resultDiv.innerText = "✅ Verified & Entry Logged: " + uniqueId;
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      box.className = "card-box success";
+      box.innerHTML = `
+        <div class="card-title">✅ ${data.groupName}</div>
+        <div class="row"><span>Pass ID:</span> <span class="badge">${data.uniqueId}</span></div>
+        <div class="row"><span>Adults / বড় মানুষ:</span> <b>${data.adults} Jon</b></div>
+        <div class="row"><span>Kids / বাচ্চা:</span> <b>${data.kids} Jon</b></div>
+        <div class="row" style="border-top:1.5px solid #cbd5e0; padding-top:5px; margin-top:5px;">
+          <span><b>Total Capacity / মোট লোক:</b></span> <span style="color:#22543d; font-size:16px;"><b>${data.total} Persons</b></span>
+        </div>
+        <div class="row"><span>Scan Count / স্ক্যান হয়েছে:</span> <b>${data.scanCount} bar</b></div>
+        <div class="row"><span>Entry Time / সময়:</span> <small>${data.lastScan}</small></div>
+      `;
+    } else {
+      box.className = "card-box error";
+      box.innerHTML = `
+        <div class="card-title" style="color:#c53030;">❌ Not Found / পাওয়া যায়নি</div>
+        <p>${data.message || "Invalid Pass ID / এই পাসটি সঠিক নয়!"}</p>
+      `;
+    }
   })
-  .catch(error => {
-    console.error("Error:", error);
-    resultDiv.style.backgroundColor = "#fce8e6";
-    resultDiv.style.color = "#c5221f";
-    resultDiv.innerText = "❌ Error connecting to database!";
+  .catch(err => {
+    console.error(err);
+    box.className = "card-box error";
+    box.innerHTML = `
+      <div class="card-title" style="color:#c53030;">❌ Connection Error</div>
+      <p>Sheet connect karne me dikkat aayi. Internet check karein.</p>
+    `;
   });
 }
 
-// Manual Form Submit
-function handleManualSubmit() {
-  const inputField = document.getElementById("manualIdInput");
-  const uniqueId = inputField.value.trim();
-  if (!uniqueId) {
-    alert("Please enter a valid Unique ID!");
+// Manual Form Submit Handler
+function submitManual() {
+  const input = document.getElementById("manualId");
+  const val = input.value.trim();
+  if (!val) {
+    alert("Kripya ek Unique ID enter karein / একটি আইডি লিখুন!");
     return;
   }
-  verifyAndLogId(uniqueId);
-  inputField.value = "";
+  verifyId(val);
+  input.value = "";
 }
 
-// Start Back Camera
+// Back Camera Shuru Karne Ka Function
 function startScanner() {
   if (isScanning) return;
-
   html5QrCode = new Html5Qrcode("reader");
-  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
   html5QrCode.start(
-    { facingMode: "environment" },
-    config,
+    { facingMode: "environment" }, // Back Camera Force Karega
+    { fps: 10, qrbox: { width: 250, height: 250 } },
     (decodedText) => {
-      verifyAndLogId(decodedText);
+      verifyId(decodedText);
       html5QrCode.pause(true);
-      setTimeout(() => {
-        if (isScanning) html5QrCode.resume();
-      }, 3000);
+      setTimeout(() => { if (isScanning) html5QrCode.resume(); }, 3500);
     },
     () => {}
   ).then(() => {
     isScanning = true;
-    document.getElementById("startScanBtn").style.display = "none";
-    document.getElementById("stopScanBtn").style.display = "inline-block";
-    applyTorchCapabilities();
+    document.getElementById("startCamBtn").style.display = "none";
+    document.getElementById("stopCamBtn").style.display = "inline-block";
+    checkTorch();
   }).catch(err => {
-    console.error("Camera error:", err);
-    alert("Camera permission denied or camera not found!");
+    console.error("Camera Error:", err);
+    alert("Camera chalu nahi hua. Browser me camera permission 'Allow' karein.");
   });
 }
 
-// Stop Camera
+// Camera Band Karne Ka Function
 function stopScanner() {
   if (html5QrCode && isScanning) {
     html5QrCode.stop().then(() => {
       isScanning = false;
-      document.getElementById("startScanBtn").style.display = "inline-block";
-      document.getElementById("stopScanBtn").style.display = "none";
+      document.getElementById("startCamBtn").style.display = "inline-block";
+      document.getElementById("stopCamBtn").style.display = "none";
       document.getElementById("torchBtn").style.display = "none";
       document.getElementById("reader").innerHTML = "";
-    }).catch(err => console.error(err));
+    });
   }
 }
 
-// Flashlight toggle
-function applyTorchCapabilities() {
+// Flashlight / Torch Check Karne Ka Function
+function checkTorch() {
   try {
     const video = document.querySelector("#reader video");
     if (video && video.srcObject) {
-      const track = video.srcObject.getVideoTracks()[0];
-      if (track.getCapabilities().torch) {
-        currentTrack = track;
+      videoTrack = video.srcObject.getVideoTracks()[0];
+      if (videoTrack.getCapabilities().torch) {
         document.getElementById("torchBtn").style.display = "inline-block";
       }
     }
@@ -123,9 +131,9 @@ function applyTorchCapabilities() {
 }
 
 function toggleTorch() {
-  if (currentTrack) {
+  if (videoTrack) {
     isTorchOn = !isTorchOn;
-    currentTrack.applyConstraints({ advanced: [{ torch: isTorchOn }] })
+    videoTrack.applyConstraints({ advanced: [{ torch: isTorchOn }] })
       .then(() => {
         document.getElementById("torchBtn").innerText = isTorchOn ? "Flashlight: ON" : "Flashlight: OFF";
       });
