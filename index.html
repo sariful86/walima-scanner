@@ -4,17 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Walima Guest Entry Scanner</title>
-  <!-- QR Scanner Library CDN -->
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; margin: 0; padding: 20px; }
-    .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
-    .manual-box { margin-top: 20px; padding: 15px; background: #eef2f3; border-radius: 8px; }
-    input[type="text"] { padding: 10px; width: 65%; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
-    button { padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin-left: 5px; }
-    button:hover { background: #218838; }
-    #result { margin-top: 15px; font-weight: bold; font-size: 18px; }
+    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; margin: 0; padding: 15px; }
+    .container { max-width: 480px; margin: auto; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+    .manual-box { margin-top: 15px; padding: 15px; background: #eef2f3; border-radius: 8px; }
+    input[type="text"] { padding: 10px; width: 60%; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
+    button { padding: 10px 14px; background: #28a745; color: white; border: none; border-radius: 5px; font-size: 15px; cursor: pointer; }
+    #torchBtn { background: #ff9800; margin-bottom: 10px; display: none; }
+    #result { margin-top: 15px; font-weight: bold; font-size: 17px; }
   </style>
 </head>
 <body>
@@ -22,10 +21,9 @@
   <div class="container">
     <h2>Walima Gate Scanner</h2>
     
-    <!-- Camera QR Scanner View -->
+    <button id="torchBtn" onclick="toggleTorch()">Flashlight: OFF</button>
     <div id="reader"></div>
 
-    <!-- Manual ID Entry Option -->
     <div class="manual-box">
       <h3>Manual Entry</h3>
       <input type="text" id="manualIdInput" placeholder="Enter Unique ID (e.g. FM-847101)">
@@ -35,7 +33,6 @@
     <div id="result"></div>
   </div>
 
-  <!-- Link external JavaScript file -->
   <script src="script.js"></script>
 </body>
 </html>

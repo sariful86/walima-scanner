@@ -1,7 +1,10 @@
-// Aapka deploy kiya hua Google Apps Script Web App URL
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyS1hY6dxksGIbIkJykHxVP9Gpa9hZMapd2fvv8fPn80RIVvSz5GiyEgu6XW0i4YS8X2Q/exec";
 
-// Function to send verification request to Google Sheets
+let html5QrCode = null;
+let isTorchOn = false;
+let currentTrack = null;
+
+// Verification Function
 function verifyAndLogId(uniqueId) {
   const resultDiv = document.getElementById("result");
   resultDiv.style.color = "blue";
@@ -9,13 +12,13 @@ function verifyAndLogId(uniqueId) {
 
   fetch(WEB_APP_URL, {
     method: "POST",
-    mode: "no-cors", // Google Apps Script redirects ke liye zaroori hai
+    mode: "no-cors",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ uniqueId: uniqueId })
   })
   .then(() => {
     resultDiv.style.color = "green";
-    resultDiv.innerText = "Success! Verified ID: " + uniqueId;
+    resultDiv.innerText = "Verified & Updated ID: " + uniqueId;
   })
   .catch(error => {
     console.error("Error:", error);
@@ -24,38 +27,78 @@ function verifyAndLogId(uniqueId) {
   });
 }
 
-// Manual form submit handler
+// Manual Input Handler
 function handleManualSubmit() {
   const inputField = document.getElementById("manualIdInput");
   const uniqueId = inputField.value.trim();
-  
   if (!uniqueId) {
     alert("Please enter a valid Unique ID!");
     return;
   }
-  
   verifyAndLogId(uniqueId);
-  inputField.value = ""; // Input clear karne ke liye
+  inputField.value = "";
 }
 
-// QR Code Scanner Initialization
-function onScanSuccess(decodedText, decodedResult) {
-  // Jab camera se QR scan ho jayega, ye automatic run hoga
-  console.log(`Code matched = ${decodedText}`, decodedResult);
-  verifyAndLogId(decodedText);
-  
-  // Bar-bar scan hone se rokne ke liye kuch der ke liye pause kar sakte hain
-  html5QrcodeScanner.clear();
-  setTimeout(() => {
-    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-  }, 3000); // 3 seconds baad dobara scanner active ho jayega
+// Start Camera with Back Camera Forced
+function startScanner() {
+  html5QrCode = new Html5Qrcode("reader");
+
+  const config = {
+    fps: 10,
+    qrbox: { width: 250, height: 250 }
+  };
+
+  html5QrCode.start(
+    { facingMode: "environment" }, // Forces Back Camera
+    config,
+    (decodedText) => {
+      console.log("Scanned:", decodedText);
+      verifyAndLogId(decodedText);
+      
+      // Pause 3 seconds after a scan
+      html5QrCode.pause(true);
+      setTimeout(() => {
+        html5QrCode.resume();
+      }, 3000);
+    },
+    (errorMessage) => {
+      // ignore scanning frame errors
+    }
+  ).then(() => {
+    // Check if flashlight/torch is supported
+    applyTorchCapabilities();
+  }).catch(err => {
+    console.error("Camera open error:", err);
+  });
 }
 
-function onScanFailure(error) {
-  // Scanning failure errors ko ignore kar sakte hain kyunki yeh continuous run hota hai
+// Flashlight toggle
+function applyTorchCapabilities() {
+  try {
+    const videoElement = document.querySelector("#reader video");
+    if (videoElement && videoElement.srcObject) {
+      const track = videoElement.srcObject.getVideoTracks()[0];
+      const capabilities = track.getCapabilities();
+      if (capabilities.torch) {
+        currentTrack = track;
+        document.getElementById("torchBtn").style.display = "inline-block";
+      }
+    }
+  } catch (e) {
+    console.log("Torch not supported on this device/browser");
+  }
 }
 
-// Start the camera scanner on page load
-const html5QrcodeScanner = new Html5QrcodeScanner(
-  "reader", { fps: 10, qrbox: 250 }, false);
-html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+function toggleTorch() {
+  if (currentTrack) {
+    isTorchOn = !isTorchOn;
+    currentTrack.applyConstraints({
+      advanced: [{ torch: isTorchOn }]
+    }).then(() => {
+      document.getElementById("torchBtn").innerText = isTorchOn ? "Flashlight: ON" : "Flashlight: OFF";
+    }).catch(err => console.error("Torch error:", err));
+  }
+}
+
+// Window load hone par camera shuru karein
+window.onload = startScanner;
