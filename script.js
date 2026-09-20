@@ -5,29 +5,52 @@ let isScanning = false;
 let isTorchOn = false;
 let videoTrack = null;
 
-// Tab Switch Karne Ka Function
+// Tab Switch
 function switchView(mode) {
-  document.getElementById("resultBox").style.display = "none";
-  if (mode === 'manual') {
+  closeModal();
+  if (mode === 'camera') {
+    document.getElementById("panelCamera").classList.add("active");
+    document.getElementById("panelManual").classList.remove("active");
+    document.getElementById("tabCamera").classList.add("active");
+    document.getElementById("tabManual").classList.remove("active");
+  } else {
     document.getElementById("panelManual").classList.add("active");
     document.getElementById("panelCamera").classList.remove("active");
     document.getElementById("tabManual").classList.add("active");
     document.getElementById("tabCamera").classList.remove("active");
     if (isScanning) stopScanner();
-  } else {
-    document.getElementById("panelCamera").classList.add("active");
-    document.getElementById("panelManual").classList.remove("active");
-    document.getElementById("tabCamera").classList.add("active");
-    document.getElementById("tabManual").classList.remove("active");
   }
 }
 
-// Database Se ID Check Aur Details Show Karne Ka Function
+// Modal popup open
+function openModal(htmlContent, headerClass, headerTitle) {
+  const modal = document.getElementById("verifyModal");
+  const modalHeader = document.getElementById("modalHeader");
+  const modalStatusText = document.getElementById("modalStatusText");
+  const modalContent = document.getElementById("modalContent");
+
+  modalHeader.className = "modal-header " + headerClass;
+  modalStatusText.innerText = headerTitle;
+  modalContent.innerHTML = htmlContent;
+  modal.style.display = "flex";
+}
+
+// Modal popup close
+function closeModal() {
+  document.getElementById("verifyModal").style.display = "none";
+  // Agar scanner chal raha ho toh resume karo
+  if (html5QrCode && isScanning) {
+    try { html5QrCode.resume(); } catch(e) {}
+  }
+}
+
+// Database Verify Function (Sheet2 Realtime)
 function verifyId(uniqueId) {
-  const box = document.getElementById("resultBox");
-  box.className = "card-box success";
-  box.style.display = "block";
-  box.innerHTML = `<p style="text-align:center; color:#2b6cb0; font-weight:bold;">🔍 Checking ID: ${uniqueId} ...<br><small>যাচাই করা হচ্ছে...</small></p>`;
+  openModal(
+    `<p style="text-align:center; padding:20px; font-weight:bold; color:#2b6cb0;">🔍 Checking ID: ${uniqueId}...<br><small>ডাটাবেস চেক করা হচ্ছে...</small></p>`,
+    "allow",
+    "CHECKING..."
+  );
 
   fetch(WEB_APP_URL, {
     method: "POST",
@@ -37,60 +60,85 @@ function verifyId(uniqueId) {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      box.className = "card-box success";
-      box.innerHTML = `
-        <div class="card-title">✅ ${data.groupName}</div>
-        <div class="row"><span>Pass ID:</span> <span class="badge">${data.uniqueId}</span></div>
-        <div class="row"><span>Adults / বড় মানুষ:</span> <b>${data.adults} Jon</b></div>
-        <div class="row"><span>Kids / বাচ্চা:</span> <b>${data.kids} Jon</b></div>
-        <div class="row" style="border-top:1.5px solid #cbd5e0; padding-top:5px; margin-top:5px;">
-          <span><b>Total Capacity / মোট লোক:</b></span> <span style="color:#22543d; font-size:16px;"><b>${data.total} Persons</b></span>
+      const isExceeded = data.isExceeded;
+      const headerClass = isExceeded ? "danger" : "allow";
+      const headerTitle = isExceeded ? "⚠️ CAPACITY EXCEEDED! (লোক বেশি)" : "✅ ENTRY ALLOWED (প্রবেশ অনুমোদিত)";
+
+      let alertMessage = "";
+      if (isExceeded) {
+        alertMessage = `
+          <div class="alert-box alert-danger">
+            ⛔ ALERT: Is Card Par Limit Se ${data.overLimitBy} Extra Log Aaye Hain!<br>
+            লোক সংখ্যা পার হয়ে গেছে! প্রবেশ আটকান।
+          </div>`;
+      } else {
+        alertMessage = `
+          <div class="alert-box alert-success">
+            ✅ PASS VERIFIED: Entry Valid (${data.remaining} entry baki hai)
+          </div>`;
+      }
+
+      const bodyHtml = `
+        <div style="font-size:19px; font-weight:bold; color:#1a202c; margin-bottom:5px;">${data.guestName}</div>
+        <div style="color:#718096; font-size:13px; margin-bottom:12px;">Group: ${data.groupName} | Side: <b>${data.category}</b></div>
+        
+        <div class="row"><span>Pass Unique ID:</span> <span class="badge">${data.uniqueId}</span></div>
+        <div class="row"><span>Total Allowed Capacity:</span> <b>${data.capacity} Persons</b></div>
+        <div class="row" style="border-top:1px solid #edf2f7; padding-top:6px;">
+          <span>Live Scan Count (মোট প্রবেশ):</span> 
+          <span class="counter-tag" style="color:${isExceeded ? '#c53030' : '#276749'};">${data.scanCount} / ${data.capacity}</span>
         </div>
-        <div class="row"><span>Scan Count / স্ক্যান হয়েছে:</span> <b>${data.scanCount} bar</b></div>
-        <div class="row"><span>Entry Time / সময়:</span> <small>${data.lastScan}</small></div>
+        <div class="row"><span>Scan Time:</span> <small>${data.lastScan}</small></div>
+
+        ${alertMessage}
+
+        <button class="btn-next" onclick="closeModal()">Next Scan / পরবর্তী স্ক্যান (✖)</button>
       `;
+
+      openModal(bodyHtml, headerClass, headerTitle);
+
     } else {
-      box.className = "card-box error";
-      box.innerHTML = `
-        <div class="card-title" style="color:#c53030;">❌ Not Found / পাওয়া যায়নি</div>
-        <p>${data.message || "Invalid Pass ID / এই পাসটি সঠিক নয়!"}</p>
-      `;
+      openModal(`
+        <div style="text-align:center; padding:10px;">
+          <p style="color:#c53030; font-size:16px; font-weight:bold;">${data.message || "Invalid QR Code / ID Sahi Nahi Hai!"}</p>
+          <button class="btn-next" style="background:#e53e3e;" onclick="closeModal()">Dobara Check Karein</button>
+        </div>
+      `, "error", "❌ NOT FOUND / পাওয়া যায়নি");
     }
   })
   .catch(err => {
     console.error(err);
-    box.className = "card-box error";
-    box.innerHTML = `
-      <div class="card-title" style="color:#c53030;">❌ Connection Error</div>
-      <p>Sheet connect karne me dikkat aayi. Internet check karein.</p>
-    `;
+    openModal(`
+      <p style="color:#c53030; text-align:center;">Database connection failed. Internet check karein.</p>
+      <button class="btn-next" onclick="closeModal()">Close</button>
+    `, "error", "CONNECTION ERROR");
   });
 }
 
-// Manual Form Submit Handler
+// Manual Form Submit
 function submitManual() {
   const input = document.getElementById("manualId");
   const val = input.value.trim();
   if (!val) {
-    alert("Kripya ek Unique ID enter karein / একটি আইডি লিখুন!");
+    alert("Kripya ID enter karein / আইডি লিখুন!");
     return;
   }
   verifyId(val);
   input.value = "";
 }
 
-// Back Camera Shuru Karne Ka Function
+// Scanner start
 function startScanner() {
   if (isScanning) return;
   html5QrCode = new Html5Qrcode("reader");
 
   html5QrCode.start(
-    { facingMode: "environment" }, // Back Camera Force Karega
+    { facingMode: "environment" },
     { fps: 10, qrbox: { width: 250, height: 250 } },
     (decodedText) => {
-      verifyId(decodedText);
+      // Camera pause karke modal kholo
       html5QrCode.pause(true);
-      setTimeout(() => { if (isScanning) html5QrCode.resume(); }, 3500);
+      verifyId(decodedText);
     },
     () => {}
   ).then(() => {
@@ -99,12 +147,12 @@ function startScanner() {
     document.getElementById("stopCamBtn").style.display = "inline-block";
     checkTorch();
   }).catch(err => {
-    console.error("Camera Error:", err);
-    alert("Camera chalu nahi hua. Browser me camera permission 'Allow' karein.");
+    console.error(err);
+    alert("Camera chalu nahi hua. Browser me camera allow karein.");
   });
 }
 
-// Camera Band Karne Ka Function
+// Scanner stop
 function stopScanner() {
   if (html5QrCode && isScanning) {
     html5QrCode.stop().then(() => {
@@ -117,7 +165,7 @@ function stopScanner() {
   }
 }
 
-// Flashlight / Torch Check Karne Ka Function
+// Torch
 function checkTorch() {
   try {
     const video = document.querySelector("#reader video");
@@ -135,7 +183,7 @@ function toggleTorch() {
     isTorchOn = !isTorchOn;
     videoTrack.applyConstraints({ advanced: [{ torch: isTorchOn }] })
       .then(() => {
-        document.getElementById("torchBtn").innerText = isTorchOn ? "Flashlight: ON" : "Flashlight: OFF";
+        document.getElementById("torchBtn").innerText = isTorchOn ? "Torch: ON" : "Torch: OFF";
       });
   }
 }
