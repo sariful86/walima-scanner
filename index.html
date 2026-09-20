@@ -1,35 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Walima Event Scanner</title>
-    <!-- Hum style ko alag file me bhi rakh sakte hain, par abhi ek sath clean rakhte hain -->
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; padding: 20px; margin: 0; }
-        h2 { color: #333; }
-        #scanner-container { width: 100%; max-width: 400px; margin: 20px auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        input[type="text"] { width: 90%; padding: 12px; font-size: 16px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 12px 20px; background: #28a745; color: white; font-size: 16px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
-        button:hover { background: #218838; }
-        #result { margin-top: 20px; padding: 15px; border-radius: 6px; font-size: 16px; font-weight: bold; text-align: left; }
-        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walima Guest Entry Scanner</title>
+  <!-- QR Scanner Library CDN -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #f4f4f9; margin: 0; padding: 20px; }
+    .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+    .manual-box { margin-top: 20px; padding: 15px; background: #eef2f3; border-radius: 8px; }
+    input[type="text"] { padding: 10px; width: 65%; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+    button { padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin-left: 5px; }
+    button:hover { background: #218838; }
+    #result { margin-top: 15px; font-weight: bold; font-size: 18px; }
+  </style>
 </head>
 <body>
 
-    <h2>Walima Entry Gate Scanner</h2>
-    <div id="scanner-container">
-        <p>Unique ID Enter ya Scan Karein</p>
-        <input type="text" id="manual-input" placeholder="Jaise: FM1-00101-01" autocomplete="off">
-        <br>
-        <button onclick="checkEntry()">Verify ID</button>
-        
-        <div id="result"></div>
+  <div class="container">
+    <h2>Walima Gate Scanner</h2>
+    
+    <!-- Camera QR Scanner View -->
+    <div id="reader"></div>
+
+    <!-- Manual ID Entry Option -->
+    <div class="manual-box">
+      <h3>Manual Entry</h3>
+      <input type="text" id="manualIdInput" placeholder="Enter Unique ID (e.g. FM-847101)">
+      <button onclick="handleManualSubmit()">Verify</button>
     </div>
 
-    <!-- JavaScript file ko yahan joda gaya hai -->
-    <script src="script.js"></script>
+    <div id="result"></div>
+  </div>
+
+  <!-- Link external JavaScript file -->
+  <script src="script.js"></script>
 </body>
 </html>
