@@ -18,7 +18,6 @@ function updateDashboardUI(data) {
   document.getElementById('stat-arrived').innerText = data.totalArrived;
   document.getElementById('stat-remaining').innerText = data.totalRemaining;
 
-  // Populate Group-wise Table Breakdown
   let tbody = document.getElementById('group-table-body');
   tbody.innerHTML = "";
 
@@ -30,7 +29,6 @@ function updateDashboardUI(data) {
   data.groups.forEach(group => {
     let tr = document.createElement('tr');
     tr.className = "hover:bg-slate-50 transition";
-    
     tr.innerHTML = `
       <td class="p-3 pl-5 font-bold text-slate-800">${group.groupName}</td>
       <td class="p-3 text-center"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-semibold">${group.sideCategory}</span></td>
@@ -48,7 +46,7 @@ function initScanner() {
     html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
     html5QrcodeScanner.render(onScanSuccess, onScanFailure);
   } catch (e) {
-    console.error("Scanner initialization error: ", e);
+    console.error("Scanner init error: ", e);
   }
 }
 
@@ -59,7 +57,7 @@ function onScanSuccess(decodedText) {
 }
 
 function onScanFailure(error) {
-  // Continuous scanning errors can be ignored
+  // Ignore continuous frame scan errors
 }
 
 function handleManualSubmit() {
@@ -121,7 +119,7 @@ function showModalResult(response) {
   }
 
   modal.classList.remove('hidden');
-  loadDashboard(); // Live refresh dashboard stats and tables
+  loadDashboard();
 }
 
 function closeModal() {
