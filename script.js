@@ -1,4 +1,4 @@
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbztugL1bl5OE1S7CbeVOwpwFvdVP3x12uPCry2YZ2SEpqb3kz06ENI1LUl0OaBmlES01w/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz0eruf9kXkIZVIfxOOiucGZXg2E0gad-o676y_WXaTpGWLWEIhTqXTaNuVPYM5EqC20g/exec";
 
 let html5QrCode = null;
 let isScanning = false;
@@ -6,7 +6,6 @@ let isTorchOn = false;
 let videoTrack = null;
 let isProcessing = false;
 
-// Guest Verification Result Popup
 function renderGuestData(data) {
   isProcessing = false;
 
@@ -87,7 +86,6 @@ function closeModal() {
   }
 }
 
-// Database Se Check Karne Ka Function
 function verifyId(uniqueId) {
   const cleanId = (uniqueId || "").trim();
   if (!cleanId) return;
@@ -103,7 +101,6 @@ function verifyId(uniqueId) {
 
   const targetUrl = `${WEB_APP_URL}?uniqueId=${encodeURIComponent(cleanId)}`;
 
-  // Direct Fetch try karega, agar block hua toh JSONP inject karega
   fetch(targetUrl)
     .then(res => res.json())
     .then(data => renderGuestData(data))
